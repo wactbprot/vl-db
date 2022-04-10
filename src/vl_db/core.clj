@@ -1,13 +1,59 @@
 (ns vl-db.core
   ^{:author "Thomas Bock <thomas.bock@ptb.de>"
-    :doc "Collection of functions for CouchDB CRUD ops."}
+    :doc "Collection of functions for CouchDB CRUD operations. `conf` map last."}
   (:require [clj-http.client :as http]
             [cheshire.core :as che]
             [clojure.java.io :as io]
             [clojure.string :as string])
   (:import java.io.ByteArrayOutputStream))
 
-(defn head [url opt]
+(defn conf [{:keys [prot host port port name usr pwd design view]}]
+  {:prot "http"
+   :host "localhost"
+   :port 5984
+   :name "vl_db"})
+
+
+(defn get 
+  "Generic `GET` request with the following opt map:
+
+  ```clojure
+  {:basic-auth [usr pwd]
+   :content-type content-type}
+  ```"
+  [url opt]
+  (http/get url opt))
+
+(defn put
+  "Generic `PUT` request with the following opt map:
+  
+  ```clojure
+  {:basic-auth [usr pwd]
+   :content-type content-type
+   :content-length (count (.getBytes body))
+   :body body}
+  ```"
+  [url opt]
+  (http/put url opt))
+
+(defn delete 
+  "Generic `DELETE` request with the following opt map:
+
+  ```clojure
+  {:basic-auth [usr pwd]
+   :content-type content-type}
+  ```"
+  [url opt]
+  (http/delete url opt))
+
+(defn head
+  "Generic `HEAD` request with the following opt map:
+  
+  ```clojure
+  {:basic-auth [usr pwd]
+  :content-type content-type}
+  ```"
+  [url opt]
   (http/head url opt))
 
 (defn doc-url
@@ -27,7 +73,8 @@
   (str u "/_design/" d "/_view/" v))
 
 (defn attachment-url 
-  "Generates a attachment url from the `id, the `f`ilename and the `url` param given in the conf map."
+  "Generates a attachment url from the `id, the `f`ilename and the `url`
+  param given in the conf map."
   [id f conf]
   {:pre  [(string? f)]}
   (str (doc-url id (dissoc conf :rev)) "/" f))
@@ -54,34 +101,44 @@
   (when (< s 400)
     (string/replace (get-in res [:headers :etag]) #"\"" "")))
 
-(defn get-rev [{opt :opt :as conf} id]
+
+;;........................................................................
+;; prep ops
+;;........................................................................
+(defn get-rev [id {opt :opt :as conf}]
   (-> (head (doc-url conf id) opt)
       res->etag))
 
-(comment
+
 ;;........................................................................
 ;; crud ops
 ;;........................................................................
-(defn get-doc [{opt :opt :as conf} id]
-  (result @(http/get (doc-url conf id) opt)))
+(defn get-doc [id {opt :opt :as conf}]
+  (-> (get (doc-url conf id) opt)
+      res->map))
 
 (defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
-  (-> @(http/get (attachment-url conf id filename) opt)
-      :body
-      body->byte-array))
+  (-> (get (attachment-url  id filename conf) opt)
+      res->map))
 
-(defn del-doc [{opt :opt :as conf} id]
-  (result @(http/delete (doc-url (assoc conf :rev (get-rev conf id)) id) opt)))
+(defn del-doc [id {opt :opt :as conf}]
+  (-> (delete (doc-url id (assoc conf :rev (get-rev conf id))) opt)
+      res->map))
 
-(defn put-doc [{opt :opt :as conf} {id :_id :as doc}]
-  (result @(http/put (doc-url conf id) (assoc opt :body (che/encode doc)))))
+(defn put-doc [{id :_id :as doc} {opt :opt :as conf}]
+  (-> (put (doc-url conf id) (assoc opt :body (che/encode doc)))
+      res->map))
+
 
 ;;........................................................................
 ;; view
 ;;........................................................................
 (defn get-view [{opt :opt :as conf}]
-  (:rows (result @(http/get (view-url conf) opt))))
-)
+  (-> (get (view-url conf) opt)
+      res->map
+      :rows))
+
+
 ;;........................................................................
 ;; playground
 ;;........................................................................
