@@ -1,0 +1,6 @@
+target/
+docs/
+.nrepl-port
+.cpcache/
+*.pdf
+*.xml
