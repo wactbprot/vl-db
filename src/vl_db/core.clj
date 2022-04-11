@@ -9,7 +9,7 @@
 
 
 
-(defn get 
+(defn- get! 
   "Generic `GET` request with the following opt map:
 
   ```clojure
@@ -19,7 +19,7 @@
   [url opt]
   (http/get url opt))
 
-(defn put
+(defn- put!
   "Generic `PUT` request with the following opt map:
   
   ```clojure
@@ -28,20 +28,20 @@
    :content-length (count (.getBytes body))
    :body body}
   ```"
-  [url {opt :opt}]
+  [url opt]
   (http/put url opt))
 
-(defn delete 
+(defn- delete! 
   "Generic `DELETE` request with the following opt map:
 
   ```clojure
   {:basic-auth [usr pwd]
    :content-type content-type}
   ```"
-  [url {opt :opt}]
+  [url opt]
   (http/delete url opt))
 
-(defn head
+(defn- head!
   "Generic `HEAD` request with the following opt map:
   
   ```clojure
@@ -49,7 +49,7 @@
   :content-type content-type}
   ```"
   [url opt]
-  (http/head url {opt :opt}))
+  (http/head url opt))
 
 (defn doc-url
   "Generates the document `u`rl for the given `id`. Appends the document
@@ -113,8 +113,7 @@
        :name "vl_db"}
       auth-opt
       (merge conf)
-      base-url
-      ))
+      base-url ))
 
 
 
@@ -122,27 +121,32 @@
 ;; prep ops
 ;;........................................................................
 (defn get-rev [id {opt :opt :as conf}]
-  (-> (head (doc-url conf id) opt)
+  (-> (head! (doc-url id conf) opt)
       res->etag))
 
-
+(defn update-rev [{id :_id :as doc} conf]
+  (if-let [rev (get-rev id conf)]
+    (assoc doc :_rev rev)
+    doc))
 ;;........................................................................
 ;; crud ops
 ;;........................................................................
 (defn get-doc [id {opt :opt :as conf}]
-  (-> (get (doc-url conf id) opt)
+  (-> (get! (doc-url id conf) opt)
       res->map))
 
 (defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
-  (-> (get (attachment-url  id filename conf) opt)
+  (-> (get! (attachment-url id filename conf) opt)
       res->map))
 
 (defn del-doc [id {opt :opt :as conf}]
-  (-> (delete (doc-url id (assoc conf :rev (get-rev conf id))) opt)
+  (-> (delete! (doc-url id (assoc conf
+                                  :rev (get-rev conf id))) opt)
       res->map))
 
 (defn put-doc [{id :_id :as doc} {opt :opt :as conf}]
-  (-> (put (doc-url conf id) (assoc opt :body (che/encode doc)))
+  (-> (put! (doc-url id conf) (assoc opt
+                                     :body (che/encode (update-rev doc conf))))
       res->map))
 
 
@@ -150,7 +154,7 @@
 ;; view
 ;;........................................................................
 (defn get-view [{opt :opt :as conf}]
-  (-> (get (view-url conf) opt)
+  (-> (get! (view-url conf) opt)
       res->map
       :rows))
 
