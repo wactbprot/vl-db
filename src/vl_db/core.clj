@@ -9,48 +9,21 @@
 
 
 
-(defn- get! 
-  "Generic `GET` request with the following opt map:
+;;........................................................................
+;; interface
+;;........................................................................
+(defn- get!  [url opt] (http/get url opt))
 
-  ```clojure
-  {:basic-auth [usr pwd]
-   :content-type content-type}
-  ```"
-  [url opt]
-  (http/get url opt))
+(defn- put!  [url opt] (http/put url opt))
 
-(defn- put!
-  "Generic `PUT` request with the following opt map:
-  
-  ```clojure
-  {:basic-auth [usr pwd]
-   :content-type content-type
-   :content-length (count (.getBytes body))
-   :body body}
-  ```"
-  [url opt]
-  (http/put url opt))
+(defn- delete! [url opt] (http/delete url opt))
 
-(defn- delete! 
-  "Generic `DELETE` request with the following opt map:
+(defn- head! [url opt] (http/head url opt))
 
-  ```clojure
-  {:basic-auth [usr pwd]
-   :content-type content-type}
-  ```"
-  [url opt]
-  (http/delete url opt))
 
-(defn- head!
-  "Generic `HEAD` request with the following opt map:
-  
-  ```clojure
-  {:basic-auth [usr pwd]
-  :content-type content-type}
-  ```"
-  [url opt]
-  (http/head url opt))
-
+;;........................................................................
+;; helper funs
+;;........................................................................
 (defn doc-url
   "Generates the document `u`rl for the given `id`. Appends the document
   `rev` if provided."
@@ -76,14 +49,14 @@
 
 (defn res->byte-array 
   "Turns the `response` body into a byte-array." 
-  [{body :body}]
-  (with-open [xin  (io/input-stream body)
-              xout (ByteArrayOutputStream.)]
-    (io/copy xin xout)
-    (.toByteArray xout)))
+  [{b :body}]
+  (with-open [xi (io/input-stream b)
+              xo (ByteArrayOutputStream.)]
+    (io/copy xi xo)
+    (.toByteArray xo)))
 
 (defn res->map
-  "Tries to parse the `res`ponse body into a `map`."
+  "Tries to parse the `res`ponse body. Returns a `map`."
   [{b :body}]
   (try
     (che/parse-string-strict b true )
@@ -96,24 +69,27 @@
   (when (< s 400)
     (string/replace (get-in res [:headers :etag]) #"\"" "")))
 
+
+;;........................................................................
+;; config
+;;........................................................................
 (defn base-url [{:keys [prot host port  name] :as conf}]
   (assoc conf
          :url (str prot "://" host ":" port "/"name)))
 
 (defn auth-opt [{usr :usr pwd :pwd :as conf}]
   (if (and usr pwd)
-    (dissoc
-     (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
+    (dissoc (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
     conf))
 
-(defn conf [conf]
+(defn config [conf]
   (-> {:prot "http"
        :host "localhost"
        :port 5984
        :name "vl_db"}
       auth-opt
       (merge conf)
-      base-url ))
+      base-url))
 
 
 
@@ -121,13 +97,18 @@
 ;; prep ops
 ;;........................................................................
 (defn get-rev [id {opt :opt :as conf}]
-  (-> (head! (doc-url id conf) opt)
-      res->etag))
+  (try
+    (-> (doc-url id conf)
+        (head! opt)
+        res->etag)
+    (catch Exception _)))
 
 (defn update-rev [{id :_id :as doc} conf]
   (if-let [rev (get-rev id conf)]
     (assoc doc :_rev rev)
     doc))
+
+
 ;;........................................................................
 ;; crud ops
 ;;........................................................................
@@ -135,13 +116,9 @@
   (-> (get! (doc-url id conf) opt)
       res->map))
 
-(defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
-  (-> (get! (attachment-url id filename conf) opt)
-      res->map))
-
 (defn del-doc [id {opt :opt :as conf}]
   (-> (delete! (doc-url id (assoc conf
-                                  :rev (get-rev conf id))) opt)
+                                  :rev (get-rev id conf))) opt)
       res->map))
 
 (defn put-doc [{id :_id :as doc} {opt :opt :as conf}]
@@ -158,6 +135,12 @@
       res->map
       :rows))
 
+;;........................................................................
+;; attachments
+;;........................................................................
+(defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
+  (-> (get! (attachment-url id filename conf) opt)
+      res->map))
 
 ;;........................................................................
 ;; playground
