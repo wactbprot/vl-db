@@ -7,11 +7,6 @@
             [clojure.string :as string])
   (:import java.io.ByteArrayOutputStream))
 
-(defn conf [{:keys [prot host port port name usr pwd design view]}]
-  {:prot "http"
-   :host "localhost"
-   :port 5984
-   :name "vl_db"})
 
 
 (defn get 
@@ -33,7 +28,7 @@
    :content-length (count (.getBytes body))
    :body body}
   ```"
-  [url opt]
+  [url {opt :opt}]
   (http/put url opt))
 
 (defn delete 
@@ -43,7 +38,7 @@
   {:basic-auth [usr pwd]
    :content-type content-type}
   ```"
-  [url opt]
+  [url {opt :opt}]
   (http/delete url opt))
 
 (defn head
@@ -54,7 +49,7 @@
   :content-type content-type}
   ```"
   [url opt]
-  (http/head url opt))
+  (http/head url {opt :opt}))
 
 (defn doc-url
   "Generates the document `u`rl for the given `id`. Appends the document
@@ -100,6 +95,27 @@
   [{s :status :as res}]
   (when (< s 400)
     (string/replace (get-in res [:headers :etag]) #"\"" "")))
+
+(defn base-url [{:keys [prot host port  name] :as conf}]
+  (assoc conf
+         :url (str prot "://" host ":" port "/"name)))
+
+(defn auth-opt [{usr :usr pwd :pwd :as conf}]
+  (if (and usr pwd)
+    (dissoc
+     (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
+    conf))
+
+(defn conf [conf]
+  (-> {:prot "http"
+       :host "localhost"
+       :port 5984
+       :name "vl_db"}
+      auth-opt
+      (merge conf)
+      base-url
+      ))
+
 
 
 ;;........................................................................
