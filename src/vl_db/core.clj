@@ -73,11 +73,13 @@
 
 (defn res->map
   "Tries to parse the `res`ponse body. Returns a `map`."
-  [{b :body}]
-  (try
-    (che/parse-string-strict b true )
+  [{body :body :as res}]
+  (if body
+    (try
+    (che/parse-string-strict body true )
     (catch Exception e
-      {:error (.getMessage e)})))
+      {:error (.getMessage e)}))
+    res))
 
 (defn res->etag
   "Extracts the etag from the `res`ponse."
@@ -162,7 +164,8 @@
   the result into a map. Renews the document if it already exists."
   [{id :_id :as doc} {opt :opt :as conf}]
   (-> (doc-url id conf)
-      (put! (assoc opt :body (update-rev doc conf)))))
+      (put! (assoc opt :body (che/encode (update-rev doc conf))))
+      res->map))
 
 (defn put-db
   "Generates a database."
