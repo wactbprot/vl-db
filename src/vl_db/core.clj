@@ -12,28 +12,22 @@
 ;;........................................................................
 ;; interface
 ;;........................................................................
+(defn req [f {pool :pool :as opt}]
+  (try
+    (http/with-connection-pool pool
+      (f opt))
+    (catch Exception e
+      {:error (.getMessage e)})))
 
-(defn- get!  [url opt]
-  (try (http/get url  opt)
-       (catch Exception e {:error (.getMessage e)})))
-
-(defn- put!  [url opt]
-  (try (http/put url opt)
-       (catch Exception e {:error (.getMessage e)})))
-
-(defn- del! [url opt]
-  (try (http/delete url opt)
-       (catch Exception e {:error (.getMessage e)})))
-
-(defn- head! [url opt]
-  (try (http/head url opt)
-       (catch Exception e {:error (.getMessage e)})))
+(defn get! [url opt] (req #(http/get url %) opt))
+(defn put! [url opt] (req #(http/put url %) opt))
+(defn del! [url opt] (req #(http/delete url %) opt))
+(defn head! [url opt] (req #(http/head url %) opt))
 
 
 ;;........................................................................
 ;; helper funs
 ;;........................................................................
-
 (defn db-url
   "Generates the database url from [[base-url]] and `:name` and assoc it
   to `conf` under `db-url`"
@@ -109,7 +103,8 @@
        :port 5984
        :name "vl_db"
        :design "share"
-       :view "vl"}
+       :view "vl"
+       :opts {:pool {:threads 1 :default-per-route 1}}}
       (merge conf)
       auth-opt
       base-url))
