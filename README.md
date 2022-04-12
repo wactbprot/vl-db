@@ -1,6 +1,6 @@
 # vl-db
 
-Collection of functions for CouchDB interaction.
+Collection of functions for CouchDB interaction. 
 
 ## init conf
 

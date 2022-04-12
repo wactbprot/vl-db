@@ -65,16 +65,6 @@
     (io/copy xi xo)
     (.toByteArray xo)))
 
-(defn res->map
-  "Tries to parse the `res`ponse body. Returns a `map`."
-  [{body :body :as res}]
-  (if body
-    (try
-    (che/parse-string-strict body true )
-    (catch Exception e
-      {:error (.getMessage e)}))
-    res))
-
 (defn res->etag
   "Extracts the etag from the `res`ponse."
   [{s :status :as res}]
@@ -104,7 +94,8 @@
        :name "vl_db"
        :design "share"
        :view "vl"
-       :opts {:pool {:threads 1 :default-per-route 1}}}
+       :opt {:pool {:threads 1 :default-per-route 1}
+              :as :json}}
       (merge conf)
       auth-opt
       base-url))
@@ -144,7 +135,7 @@
   [id {opt :opt :as conf}]
   (-> (doc-url id conf)
       (get! opt)
-      res->map))
+      :body))
 
 (defn del-doc
   "Deletes a document with the `id` from the configured database. Turns
@@ -152,7 +143,7 @@
   [id {opt :opt :as conf}]
   (-> (doc-url id (assoc conf :rev (get-rev id conf)))
       (del! opt)
-      res->map))
+      :body))
 
 (defn put-doc
   "Puts the given `doc`ument to the configured database. Turns
@@ -160,14 +151,14 @@
   [{id :_id :as doc} {opt :opt :as conf}]
   (-> (doc-url id conf)
       (put! (assoc opt :body (che/encode (update-rev doc conf))))
-      res->map))
+      :body))
 
 (defn put-db
   "Generates a database."
   [{opt :opt :as conf}]
   (-> (db-url conf)
       (put! opt)
-      res->map))
+      :body))
 
 
 ;;........................................................................
@@ -177,7 +168,7 @@
   (-> (view-url conf)
       ;; add params like key, startkey ...
       (get! opt)
-      res->map
+      :body
       :rows))
 
 ;;........................................................................
@@ -185,7 +176,7 @@
 ;;........................................................................
 (defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
   (-> (get! (attachment-url id filename conf) opt)
-      res->map))
+      :body))
 
 ;;........................................................................
 ;; playground
