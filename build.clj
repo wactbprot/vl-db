@@ -1,8 +1,8 @@
 (ns build
   (:require [clojure.tools.build.api :as b]))
 
-(def lib 'wactbprot/libea)
-(def version (format "0.6.%s" (b/git-count-revs nil)))
+(def lib 'wactbprot/vl-db)
+(def version (format "0.1.%s" (b/git-count-revs nil)))
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))

@@ -2,7 +2,7 @@
         clj-http/clj-http {:mvn/version "3.12.3"}
         cheshire/cheshire {:mvn/version "5.10.0"}}
  
- :paths ["src" "resources"]
+ :paths ["src"]
  
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {io.github.cognitect-labs/test-runner 

@@ -13,28 +13,32 @@
 ;; interface
 ;;........................................................................
 (defn- get!  [url opt] (http/get url opt))
-
 (defn- put!  [url opt] (http/put url opt))
-
-(defn- delete! [url opt] (http/delete url opt))
-
+(defn- del! [url opt] (http/delete url opt))
 (defn- head! [url opt] (http/head url opt))
 
 
 ;;........................................................................
 ;; helper funs
 ;;........................................................................
+
+(defn db-url
+  "Generates the database url from [[base-url]] and `:name` and assoc it
+  to `conf` under `db-url`"
+  [{u :url n :name :as conf}]
+  {:pre  [(string? n)]}
+  (str u "/" n))
+
 (defn doc-url
   "Generates the document `u`rl for the given `id`. Appends the document
   `rev` if provided."
-  [id {u :url rev :rev}]
-  {:pre  [(string? id)
-          (string? u)]}
-  (str u "/" id (when rev (str "?rev=" rev))))
+  [id {rev :rev}]
+  {:pre  [(string? id)]}
+  (str (db-url conf) "/" id (when rev (str "?rev=" rev))))
 
 (defn view-url
   "Generates a view url from the params given in the conf map."
-  [{u :url d :design v :view}]
+  [{u :db-url d :design v :view}]
   {:pre  [(string? u)
           (string? d)
           (string? v)]}
@@ -73,9 +77,12 @@
 ;;........................................................................
 ;; config
 ;;........................................................................
-(defn base-url [{:keys [prot host port  name] :as conf}]
-  (assoc conf
-         :url (str prot "://" host ":" port "/"name)))
+(defn base-url
+  [{:keys [prot host port] :as conf}]
+  {:pre  [(string? prot)
+          (string? host)
+          (number? port)]}
+  (assoc conf :url (str prot "://" host ":" port)))
 
 (defn auth-opt [{usr :usr pwd :pwd :as conf}]
   (if (and usr pwd)
@@ -86,9 +93,11 @@
   (-> {:prot "http"
        :host "localhost"
        :port 5984
-       :name "vl_db"}
-      auth-opt
+       :name "vl_db"
+       :design "share"
+       :view "vl"}
       (merge conf)
+      auth-opt
       base-url))
 
 
@@ -104,26 +113,53 @@
     (catch Exception _)))
 
 (defn update-rev [{id :_id :as doc} conf]
-  (if-let [rev (get-rev id conf)]
-    (assoc doc :_rev rev)
+  (if-let [r (get-rev id conf)]
+    (assoc doc :_rev r)
     doc))
 
+(defn assoc-param [k conf]
+  (if-let [v (get conf k)]
+    (dissoc (assoc-in conf [:opt :query-params] {k v}) k)
+    conf))
+
+(defn param-opt [conf]
+  (->> conf
+       (assoc-param :key)
+       (assoc-param :startkey)
+       (assoc-param :endkey)))
 
 ;;........................................................................
 ;; crud ops
 ;;........................................................................
-(defn get-doc [id {opt :opt :as conf}]
-  (-> (get! (doc-url id conf) opt)
+(defn get-doc
+  "Gets a document with the `id` from the configured database. Turns
+  the result into a map."
+  [id {opt :opt :as conf}]
+  (-> (doc-url id conf)
+      (get! opt)
       res->map))
 
-(defn del-doc [id {opt :opt :as conf}]
-  (-> (delete! (doc-url id (assoc conf
-                                  :rev (get-rev id conf))) opt)
+(defn del-doc
+  "Deletes a document with the `id` from the configured database. Turns
+  the result into a map."
+  [id {opt :opt :as conf}]
+  (-> (doc-url id (assoc conf :rev (get-rev id conf)))
+      (del! opt)
       res->map))
 
-(defn put-doc [{id :_id :as doc} {opt :opt :as conf}]
-  (-> (put! (doc-url id conf) (assoc opt
-                                     :body (che/encode (update-rev doc conf))))
+(defn put-doc
+  "Puts the given `doc`ument to the configured database. Turns
+  the result into a map. Renews the document if it already exists."
+  [{id :_id :as doc} {opt :opt :as conf}]
+  (-> (doc-url id conf)
+      (put! (assoc opt :body (che/encode (update-rev doc conf))))
+      res->map))
+
+(defn put-db
+  "Generates a database."
+  [{opt :opt :as conf}]
+  (-> (db-url conf)
+      (put! opt)
       res->map))
 
 
@@ -131,7 +167,9 @@
 ;; view
 ;;........................................................................
 (defn get-view [{opt :opt :as conf}]
-  (-> (get! (view-url conf) opt)
+  (-> (view-url conf)
+      ;; add params like key, startkey ...
+      (get! opt)
       res->map
       :rows))
 
