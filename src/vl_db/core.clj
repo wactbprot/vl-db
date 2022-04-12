@@ -12,10 +12,22 @@
 ;;........................................................................
 ;; interface
 ;;........................................................................
-(defn- get!  [url opt] (http/get url opt))
-(defn- put!  [url opt] (http/put url opt))
-(defn- del! [url opt] (http/delete url opt))
-(defn- head! [url opt] (http/head url opt))
+
+(defn- get!  [url opt]
+  (try (http/get url  opt)
+       (catch Exception e {:error (.getMessage e)})))
+
+(defn- put!  [url opt]
+  (try (http/put url opt)
+       (catch Exception e {:error (.getMessage e)})))
+
+(defn- del! [url opt]
+  (try (http/delete url opt)
+       (catch Exception e {:error (.getMessage e)})))
+
+(defn- head! [url opt]
+  (try (http/head url opt)
+       (catch Exception e {:error (.getMessage e)})))
 
 
 ;;........................................................................
@@ -32,7 +44,7 @@
 (defn doc-url
   "Generates the document `u`rl for the given `id`. Appends the document
   `rev` if provided."
-  [id {rev :rev}]
+  [id {rev :rev :as conf}]
   {:pre  [(string? id)]}
   (str (db-url conf) "/" id (when rev (str "?rev=" rev))))
 
@@ -70,7 +82,7 @@
 (defn res->etag
   "Extracts the etag from the `res`ponse."
   [{s :status :as res}]
-  (when (< s 400)
+  (when (and s (< s 400))
     (string/replace (get-in res [:headers :etag]) #"\"" "")))
 
 
@@ -106,11 +118,9 @@
 ;; prep ops
 ;;........................................................................
 (defn get-rev [id {opt :opt :as conf}]
-  (try
-    (-> (doc-url id conf)
-        (head! opt)
-        res->etag)
-    (catch Exception _)))
+  (-> (doc-url id conf)
+      (head! opt)
+       res->etag))
 
 (defn update-rev [{id :_id :as doc} conf]
   (if-let [r (get-rev id conf)]
@@ -152,8 +162,7 @@
   the result into a map. Renews the document if it already exists."
   [{id :_id :as doc} {opt :opt :as conf}]
   (-> (doc-url id conf)
-      (put! (assoc opt :body (che/encode (update-rev doc conf))))
-      res->map))
+      (put! (assoc opt :body (update-rev doc conf)))))
 
 (defn put-db
   "Generates a database."
