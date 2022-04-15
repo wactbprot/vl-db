@@ -1,9 +1,10 @@
 (ns vl-db.core
   ^{:author "Thomas Bock <thomas.bock@ptb.de>"
-    :doc "Collection of functions for CouchDB CRUD operations. `conf` map last."}
+    :doc "Collection of functions for CouchDB CRUD operations. 
+          `conf` map last."}
   (:require [clj-http.client :as http]
-            [cheshire.core :as che]
             [clojure.java.io :as io]
+            [cheshire.core :as che]
             [clojure.string :as string])
   (:import java.io.ByteArrayOutputStream))
 
@@ -35,6 +36,8 @@
   {:pre  [(string? n)]}
   (str u "/" n))
 
+(defn uuids-url [{u :url}] (str u "/_uuids"))
+
 (defn doc-url
   "Generates the document `u`rl for the given `id`. Appends the document
   `rev` if provided."
@@ -65,6 +68,14 @@
     (io/copy xi xo)
     (.toByteArray xo)))
 
+(defn res->map
+  "Tries to parse the `res`ponse body. Returns a `map`."
+  [{b :body}]
+  (try
+    (che/parse-string-strict b true )
+    (catch Exception e
+      {:error (.getMessage e)})))
+
 (defn res->etag
   "Extracts the etag from the `res`ponse."
   [{s :status :as res}]
@@ -87,15 +98,20 @@
     (dissoc (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
     conf))
 
-(defn config [conf]
+(defn config
+  "Returns a config map to bootstrap the `vl-db` configuration.
+
+  NOTE: `clj-http.client` provides an `:as :json` `opt`ion. However,
+  it should still be de- and encoded via `cheshire.core` to keep
+  easier more transparent control over the result."
+  [conf]
   (-> {:prot "http"
        :host "localhost"
        :port 5984
        :name "vl_db"
        :design "share"
        :view "vl"
-       :opt {:pool {:threads 1 :default-per-route 1}
-              :as :json}}
+       :opt {:pool {:threads 1 :default-per-route 1}}}
       (merge conf)
       auth-opt
       base-url))
@@ -135,30 +151,31 @@
   [id {opt :opt :as conf}]
   (-> (doc-url id conf)
       (get! opt)
-      :body))
+      res->map))
 
 (defn del-doc
-  "Deletes a document with the `id` from the configured database. Turns
-  the result into a map."
+  "Deletes a document with the `id` from the configured database. The
+  Result is turned into a map."
   [id {opt :opt :as conf}]
   (-> (doc-url id (assoc conf :rev (get-rev id conf)))
       (del! opt)
-      :body))
+      res->map))
 
 (defn put-doc
-  "Puts the given `doc`ument to the configured database. Turns
-  the result into a map. Renews the document if it already exists."
+  "Puts the given `doc`ument to the configured database. Turns the
+  result into a map. Renews the `:_rev` key id document if it already
+  exists."
   [{id :_id :as doc} {opt :opt :as conf}]
   (-> (doc-url id conf)
       (put! (assoc opt :body (che/encode (update-rev doc conf))))
-      :body))
+      res->map))
 
 (defn put-db
-  "Generates a database."
+  "Generates a database with the name given with `conf` key `:name`."
   [{opt :opt :as conf}]
   (-> (db-url conf)
       (put! opt)
-      :body))
+      res->map))
 
 
 ;;........................................................................
@@ -168,15 +185,27 @@
   (-> (view-url conf)
       ;; add params like key, startkey ...
       (get! opt)
-      :body
+      res->map
       :rows))
+
+
+;;........................................................................
+;; uuid
+;;........................................................................
+(defn get-uuids
+  ([conf]
+   (get-uuids 1 conf))
+  ([n {opt :opt :as conf}]
+   (-> (uuid-url conf)
+       (get! (assoc opt :query-params {:count n}))
+       res->map)))
 
 ;;........................................................................
 ;; attachments
 ;;........................................................................
 (defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
   (-> (get! (attachment-url id filename conf) opt)
-      :body))
+      res->map))
 
 ;;........................................................................
 ;; playground

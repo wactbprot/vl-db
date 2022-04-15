@@ -2,7 +2,13 @@
 
 Collection of functions for CouchDB interaction. 
 
-## init conf
+## Dependencies
+
+* [clj-http](https://clojars.org/clj-http) 
+* [cheshire.core](https://clojars.org/cheshire)
+
+
+## Init conf
 
 ```clojure
 (def conf (config {:usr "username" :pwd "password"}))
