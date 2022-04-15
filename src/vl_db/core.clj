@@ -13,21 +13,21 @@
 ;;........................................................................
 ;; interface
 ;;........................................................................
-(defn req [f {pool :pool :as opt}]
+(defn- req! [f {pool :pool :as opt}]
   (try
     (http/with-connection-pool pool
       (f opt))
     (catch Exception e
       {:error (.getMessage e)})))
 
-(defn get! [url opt] (req #(http/get url %) opt))
-(defn put! [url opt] (req #(http/put url %) opt))
-(defn del! [url opt] (req #(http/delete url %) opt))
-(defn head! [url opt] (req #(http/head url %) opt))
+(defn- get! [url opt] (req! #(http/get url %) opt))
+(defn- put! [url opt] (req! #(http/put url %) opt))
+(defn- del! [url opt] (req! #(http/delete url %) opt))
+(defn- head! [url opt] (req! #(http/head url %) opt))
 
 
 ;;........................................................................
-;; helper funs
+;; generate urls
 ;;........................................................................
 (defn db-url
   "Generates the database url from [[base-url]] and `:name` and assoc it
@@ -41,7 +41,7 @@
 (defn up-url [{u :url}] (str u "/_up"))
 
 (defn doc-url
-  "Generates the document `u`rl for the given `id`. Appends the document
+  "Generates the document url for the given `id`. Appends the document
   `rev` if provided."
   [id {rev :rev :as conf}]
   {:pre  [(string? id)]}
@@ -49,11 +49,10 @@
 
 (defn view-url
   "Generates a view url from the params given in the conf map."
-  [{u :db-url d :design v :view}]
-  {:pre  [(string? u)
-          (string? d)
+  [{d :design v :view :as conf}]
+  {:pre  [(string? d)
           (string? v)]}
-  (str u "/_design/" d "/_view/" v))
+  (str (db-url conf) "/_design/" d "/_view/" v))
 
 (defn attachment-url 
   "Generates a attachment url from the `id, the `f`ilename and the `url`
@@ -62,8 +61,12 @@
   {:pre  [(string? f)]}
   (str (doc-url id (dissoc conf :rev)) "/" f))
 
+
+;;........................................................................
+;; helper functions
+;;........................................................................
 (defn res->byte-array 
-  "Turns the `response` body into a byte-array." 
+  "Turns the `res`ponse body into a byte-array." 
   [{b :body}]
   (with-open [xi (io/input-stream b)
               xo (ByteArrayOutputStream.)]
@@ -82,7 +85,7 @@
   "Extracts the etag from the `res`ponse."
   [{s :status :as res}]
   (when (and s (< s 400))
-    (string/replace (get-in res [:headers :etag]) #"\"" "")))
+    (string/replace (-> res :headers :etag) #"\"" "")))
 
 
 ;;........................................................................
@@ -100,6 +103,38 @@
     (dissoc (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
     conf))
 
+
+;;........................................................................
+;; prep ops
+;;........................................................................
+(defn get-rev [id {opt :opt :as conf}]
+  (-> (doc-url id conf)
+      (head! opt)
+       res->etag))
+
+(defn update-rev [{id :_id :as doc} conf]
+  (if-let [r (get-rev id conf)]
+    (assoc doc :_rev r)
+    doc))
+
+
+;;........................................................................
+;; query params
+;;........................................................................
+(defn assoc-param [k conf]
+  (if-let [v (get conf k)]
+    (dissoc (assoc-in conf [:opt :query-params] {k v}) k)
+    conf))
+
+(defn param-opt [conf]
+  (->> conf
+       (assoc-param :key)
+       (assoc-param :startkey)
+       (assoc-param :endkey)))
+
+;;........................................................................
+;; config bootstrap
+;;........................................................................
 (defn config
   "Returns a config map to bootstrap the `vl-db` configuration.
 
@@ -118,31 +153,6 @@
       auth-opt
       base-url))
 
-
-
-;;........................................................................
-;; prep ops
-;;........................................................................
-(defn get-rev [id {opt :opt :as conf}]
-  (-> (doc-url id conf)
-      (head! opt)
-       res->etag))
-
-(defn update-rev [{id :_id :as doc} conf]
-  (if-let [r (get-rev id conf)]
-    (assoc doc :_rev r)
-    doc))
-
-(defn assoc-param [k conf]
-  (if-let [v (get conf k)]
-    (dissoc (assoc-in conf [:opt :query-params] {k v}) k)
-    conf))
-
-(defn param-opt [conf]
-  (->> conf
-       (assoc-param :key)
-       (assoc-param :startkey)
-       (assoc-param :endkey)))
 
 ;;........................................................................
 ;; crud ops
@@ -183,10 +193,13 @@
 ;;........................................................................
 ;; view
 ;;........................................................................
-(defn get-view [{opt :opt :as conf}]
+(defn get-view 
+  "Gets the database index described with `:design` and `:view`. The
+  result set can be reduced by `:key`, `:startkey` and `:endkey`
+  included in the `conf` map." 
+  [conf]
   (-> (view-url conf)
-      ;; add params like key, startkey ...
-      (get! opt)
+      (get! (:opt (param-opt conf)))
       res->map
       :rows))
 
@@ -195,13 +208,12 @@
 ;; uuid
 ;;........................................................................
 (defn get-uuids
-  "Requests one or more (depending on `n`) Universally Unique
-  Identifiers (UUIDs) from the CouchDB instance. The response is a
-  JSON object providing a list of UUIDs."
+  "Requests `n` Universally Unique Identifiers (UUIDs) from the CouchDB
+  instance. The response is a JSON object providing a list of UUIDs."
   ([conf]
    (get-uuids 1 conf))
   ([n {opt :opt :as conf}]
-   (-> (uuid-url conf)
+   (-> (uuids-url conf)
        (get! (assoc opt :query-params {:count n}))
        res->map)))
 
@@ -223,12 +235,15 @@
        res->map
        :status
        (= "ok")))
+
+
 ;;........................................................................
 ;; attachments
 ;;........................................................................
 (defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
   (-> (get! (attachment-url id filename conf) opt)
-      res->map))
+      res->byte-array))
+
 
 ;;........................................................................
 ;; playground
