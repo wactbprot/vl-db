@@ -38,6 +38,8 @@
 
 (defn uuids-url [{u :url}] (str u "/_uuids"))
 
+(defn up-url [{u :url}] (str u "/_up"))
+
 (defn doc-url
   "Generates the document `u`rl for the given `id`. Appends the document
   `rev` if provided."
@@ -193,6 +195,9 @@
 ;; uuid
 ;;........................................................................
 (defn get-uuids
+  "Requests one or more (depending on `n`) Universally Unique
+  Identifiers (UUIDs) from the CouchDB instance. The response is a
+  JSON object providing a list of UUIDs."
   ([conf]
    (get-uuids 1 conf))
   ([n {opt :opt :as conf}]
@@ -200,6 +205,24 @@
        (get! (assoc opt :query-params {:count n}))
        res->map)))
 
+
+;;........................................................................
+;; up
+;;........................................................................
+(defn up?
+  "Confirms that the server is up, running, and ready to respond to
+  requests.
+
+  Example:
+  ```clojure
+  (up? (config {}))
+  ```"
+  [{opt :opt :as conf}]
+   (-> (up-url conf)
+       (get! opt)
+       res->map
+       :status
+       (= "ok")))
 ;;........................................................................
 ;; attachments
 ;;........................................................................
