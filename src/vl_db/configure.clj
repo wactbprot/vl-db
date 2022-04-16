@@ -37,7 +37,9 @@
        :name "vl_db"
        :design "share"
        :view "vl"
-       :opt {:pool {:threads 1 :default-per-route 1}}}
+       :opt {; :debug true
+             ; :pool {:threads 1 :default-per-route 1}
+             }}
       (merge conf)
       auth-opt
       base-url))
