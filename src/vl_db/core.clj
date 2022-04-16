@@ -2,28 +2,12 @@
   ^{:author "Thomas Bock <thomas.bock@ptb.de>"
     :doc "Collection of functions for CouchDB CRUD operations. 
           `conf` map last."}
-  (:require [clj-http.client :as http]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [cheshire.core :as che]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [vl-db.configure :as c]
+            [vl-db.interface :as http])
   (:import java.io.ByteArrayOutputStream))
-
-
-
-;;........................................................................
-;; interface
-;;........................................................................
-(defn- req! [f {pool :pool :as opt}]
-  (try
-    (http/with-connection-pool pool
-      (f opt))
-    (catch Exception e
-      {:error (.getMessage e)})))
-
-(defn- get! [url opt] (req! #(http/get url %) opt))
-(defn- put! [url opt] (req! #(http/put url %) opt))
-(defn- del! [url opt] (req! #(http/delete url %) opt))
-(defn- head! [url opt] (req! #(http/head url %) opt))
 
 
 ;;........................................................................
@@ -75,11 +59,13 @@
 
 (defn res->map
   "Tries to parse the `res`ponse body. Returns a `map`."
-  [{b :body}]
-  (try
-    (che/parse-string-strict b true )
-    (catch Exception e
-      {:error (.getMessage e)})))
+  [{body :body :as res}]
+  (if body
+    (try
+      (che/parse-string-strict body true )
+      (catch Exception e
+        {:error (.getMessage e)}))
+    res))
 
 (defn res->etag
   "Extracts the etag from the `res`ponse."
@@ -89,27 +75,11 @@
 
 
 ;;........................................................................
-;; config
-;;........................................................................
-(defn base-url
-  [{:keys [prot host port] :as conf}]
-  {:pre  [(string? prot)
-          (string? host)
-          (number? port)]}
-  (assoc conf :url (str prot "://" host ":" port)))
-
-(defn auth-opt [{usr :usr pwd :pwd :as conf}]
-  (if (and usr pwd)
-    (dissoc (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
-    conf))
-
-
-;;........................................................................
 ;; prep ops
 ;;........................................................................
 (defn get-rev [id {opt :opt :as conf}]
   (-> (doc-url id conf)
-      (head! opt)
+      (http/head! opt)
        res->etag))
 
 (defn update-rev [{id :_id :as doc} conf]
@@ -132,27 +102,6 @@
        (assoc-param :startkey)
        (assoc-param :endkey)))
 
-;;........................................................................
-;; config bootstrap
-;;........................................................................
-(defn config
-  "Returns a config map to bootstrap the `vl-db` configuration.
-
-  NOTE: `clj-http.client` provides an `:as :json` `opt`ion. However,
-  it should still be de- and encoded via `cheshire.core` to keep
-  easier more transparent control over the result."
-  [conf]
-  (-> {:prot "http"
-       :host "localhost"
-       :port 5984
-       :name "vl_db"
-       :design "share"
-       :view "vl"
-       :opt {:pool {:threads 1 :default-per-route 1}}}
-      (merge conf)
-      auth-opt
-      base-url))
-
 
 ;;........................................................................
 ;; crud ops
@@ -162,7 +111,7 @@
   the result into a map."
   [id {opt :opt :as conf}]
   (-> (doc-url id conf)
-      (get! opt)
+      (http/get! opt)
       res->map))
 
 (defn del-doc
@@ -170,7 +119,7 @@
   Result is turned into a map."
   [id {opt :opt :as conf}]
   (-> (doc-url id (assoc conf :rev (get-rev id conf)))
-      (del! opt)
+      (http/del! opt)
       res->map))
 
 (defn put-doc
@@ -179,14 +128,22 @@
   exists."
   [{id :_id :as doc} {opt :opt :as conf}]
   (-> (doc-url id conf)
-      (put! (assoc opt :body (che/encode (update-rev doc conf))))
+      (http/put! (assoc opt :body (che/encode (update-rev doc conf))))
       res->map))
 
 (defn put-db
   "Generates a database with the name given with `conf` key `:name`."
   [{opt :opt :as conf}]
   (-> (db-url conf)
-      (put! opt)
+      (http/put! opt)
+      res->map))
+
+
+(defn del-db
+  "Generates a database with the name given with `conf` key `:name`."
+  [{opt :opt :as conf}]
+  (-> (db-url conf)
+      (http/del! opt)
       res->map))
 
 
@@ -199,7 +156,7 @@
   included in the `conf` map." 
   [conf]
   (-> (view-url conf)
-      (get! (:opt (param-opt conf)))
+      (http/get! (:opt (param-opt conf)))
       res->map
       :rows))
 
@@ -214,16 +171,17 @@
    (get-uuids 1 conf))
   ([n {opt :opt :as conf}]
    (-> (uuids-url conf)
-       (get! (assoc opt :query-params {:count n}))
-       res->map)))
+       (http/get! (assoc opt :query-params {:count n}))
+       res->map
+       :uuids)))
 
 
 ;;........................................................................
 ;; up
 ;;........................................................................
 (defn up?
-  "Confirms that the server is up, running, and ready to respond to
-  requests.
+  "Predicate function that confirms that the server is up, running, and
+  ready to respond to requests.
 
   Example:
   ```clojure
@@ -231,7 +189,7 @@
   ```"
   [{opt :opt :as conf}]
    (-> (up-url conf)
-       (get! opt)
+       (http/get! opt)
        res->map
        :status
        (= "ok")))
@@ -240,8 +198,13 @@
 ;;........................................................................
 ;; attachments
 ;;........................................................................
-(defn get-attachment-as-byte-array [{opt :opt :as conf} id filename]
-  (-> (get! (attachment-url id filename conf) opt)
+(defn get-attachment-as-byte-array
+  "Gets a attachment with `filename` from the document with the
+  identifier `id`. The result is turned into a byte array which seems
+  to be a suitable interface for further processing (e.g. to base64
+  etc.)"
+  [id filename {opt :opt :as conf}]
+  (-> (http/get! (attachment-url id filename conf) opt)
       res->byte-array))
 
 
