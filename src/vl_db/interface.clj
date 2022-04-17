@@ -5,8 +5,8 @@
 
 (defn- req! [f {pool :pool :as opt}]
   (try
-    (f opt)
-    #_(http/with-connection-pool pool)
+    (http/with-connection-pool pool
+      (f opt))
     (catch Exception e
       {:error (.getMessage e)})))
 

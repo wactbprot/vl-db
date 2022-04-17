@@ -13,16 +13,23 @@
 ;;........................................................................
 ;; generate urls
 ;;........................................................................
+(defn base-url
+  [{:keys [prot host port] :as conf}]
+  {:pre  [(string? prot)
+          (string? host)
+          (number? port)]}
+  (str prot "://" host ":" port))
+
 (defn db-url
   "Generates the database url from [[base-url]] and `:name` and assoc it
   to `conf` under `db-url`"
-  [{u :url n :name :as conf}]
+  [{n :name :as conf}]
   {:pre  [(string? n)]}
-  (str u "/" n))
+  (str (base-url conf) "/" n))
 
-(defn uuids-url [{u :url}] (str u "/_uuids"))
+(defn uuids-url [conf] (str (base-url conf) "/_uuids"))
 
-(defn up-url [{u :url}] (str u "/_up"))
+(defn up-url [conf] (str (base-url conf) "/_up"))
 
 (defn doc-url
   "Generates the document url for the given `id`. Appends the document

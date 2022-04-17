@@ -6,13 +6,6 @@
     (dissoc (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
     conf))
 
-(defn base-url
-  [{:keys [prot host port] :as conf}]
-  {:pre  [(string? prot)
-          (string? host)
-          (number? port)]}
-  (assoc conf :url (str prot "://" host ":" port)))
-
 (defn config
   "Returns a config map to bootstrap the `vl-db` configuration.
 
@@ -38,8 +31,6 @@
        :design "share"
        :view "vl"
        :opt {; :debug true
-             ; :pool {:threads 1 :default-per-route 1}
-             }}
+             :pool {:threads 1 :default-per-route 1}}}
       (merge conf)
-      auth-opt
-      base-url))
+      auth-opt))
