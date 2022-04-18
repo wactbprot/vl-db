@@ -65,14 +65,18 @@
 
 (deftest put-attachment-i
   (testing "a attachment can be uploaded"
-    (is (true? (:ok (db/put-attachment-from-filename docid "README.md" conf))))))
+    (is (true? (:ok (db/put-attachment-from-filename docid "README.md" conf))))
+    (is (true? (:ok (db/put-attachment-from-filename docid "logo.png" conf))))))
+
+(deftest get-attachment-i
+  (testing "a attachment can be uploaded"
+    (is (string? (db/get-attachment docid "README.md" conf)))))
 
 (deftest del-doc-i
   (testing "a document can be deleted only once"
     (is (true? (:ok (db/del-doc docid conf))))
     (is (= (db/del-doc docid conf)
            {:error "clj-http: status 404"}))))
-
 
 (deftest del-database-i
   (testing "a database can be deleted only once"
@@ -91,6 +95,7 @@
   (get-db-i)
   (put-design-doc-i)
   (put-attachment-i)
+  (get-attachment-i)
   (get-view-i)
   (del-doc-i)
   (del-database-i))

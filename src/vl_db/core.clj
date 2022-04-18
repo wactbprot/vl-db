@@ -158,7 +158,9 @@
       res->map))
 
 (defn get-db
-  "Gets info about the database with the name given with `conf` key `:name`."
+  "Get a info map about the database with the name given with `conf` key
+  `:name`. Info map entries are documented
+  [here](https://docs.couchdb.org/en/3.2.0/json-structure.html#couchdb-database-information-object)."
   [{opt :opt :as conf}]
   (-> (db-url conf)
       (http/get! opt)
@@ -223,15 +225,13 @@
 ;;........................................................................
 ;; attachments
 ;;........................................................................
-(defn get-attachment-as-byte-array
+(defn get-attachment
   "Gets a attachment with `filename` from the document with the
-  identifier `id`. The result is turned into a byte array which seems
-  to be a suitable interface for further processing (e.g. to base64
-  etc.)"
+  identifier `id`."
   [id filename {opt :opt :as conf}]
   (-> (attachment-url id filename conf)
       (http/get! opt)
-      res->byte-array))
+      :body))
 
 (defn put-attachment-from-filename
   [id filename {opt :opt :as conf}]
