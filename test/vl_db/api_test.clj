@@ -63,6 +63,10 @@
   (testing "a view can be retrieved"
     (is (pos? (count (db/get-view (assoc conf :design "test" :view "testview")))))))
 
+(deftest put-attachment-i
+  (testing "a attachment can be uploaded"
+    (is (true? (:ok (db/put-attachment-from-filename docid "README.md" conf))))))
+
 (deftest del-doc-i
   (testing "a document can be deleted only once"
     (is (true? (:ok (db/del-doc docid conf))))
@@ -76,6 +80,7 @@
        {:ok true}))
    (is (= (db/del-db conf)
        {:error "clj-http: status 404"}))))
+
 (comment)
 (defn test-ns-hook []
   (server-up-i)
@@ -85,6 +90,7 @@
   (put-doc-i)
   (get-db-i)
   (put-design-doc-i)
+  (put-attachment-i)
   (get-view-i)
   (del-doc-i)
   (del-database-i))

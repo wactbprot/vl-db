@@ -7,7 +7,9 @@
             [clojure.string :as string]
             [vl-db.configure :as c]
             [vl-db.interface :as http])
-  (:import java.io.ByteArrayOutputStream))
+  (:import java.io.ByteArrayOutputStream
+           java.nio.file.Paths
+           java.nio.file.Files))
 
 
 ;;........................................................................
@@ -58,11 +60,21 @@
 ;;........................................................................
 (defn res->byte-array 
   "Turns the `res`ponse body into a byte-array." 
-  [{b :body}]
-  (with-open [xi (io/input-stream b)
+  [{body :body}]
+  (with-open [xi (io/input-stream body)
               xo (ByteArrayOutputStream.)]
     (io/copy xi xo)
     (.toByteArray xo)))
+
+(defn filename->byte-array 
+  "Reads a file with the name `filename` into a byte-array"
+  [filename]
+  (try
+    (-> filename
+        (Paths/get (into-array [""]))
+        (Files/readAllBytes))
+  (catch Exception e
+    {:error (.getMessage e)})))
 
 (defn res->map
   "Tries to parse the `res`ponse body. Returns a `map`."
@@ -217,13 +229,14 @@
   to be a suitable interface for further processing (e.g. to base64
   etc.)"
   [id filename {opt :opt :as conf}]
-  (-> (http/get! (attachment-url id filename conf) opt)
+  (-> (attachment-url id filename conf)
+      (http/get! opt)
       res->byte-array))
 
-
-;;........................................................................
-;; playground
-;;........................................................................
-(comment
-  (get-doc c/conf "foo")
-  (get-rev c/conf "000_REPLICATIONS"))
+(defn put-attachment-from-filename
+  [id filename {opt :opt :as conf}]
+  (-> (attachment-url id filename conf)
+      (http/put! (assoc opt
+                        :headers {:if-match (get-rev id conf)}
+                        :body (filename->byte-array filename)))
+      res->map))
