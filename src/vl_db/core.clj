@@ -145,6 +145,12 @@
       (http/put! opt)
       res->map))
 
+(defn get-db
+  "Gets info about the database with the name given with `conf` key `:name`."
+  [{opt :opt :as conf}]
+  (-> (db-url conf)
+      (http/get! opt)
+      res->map))
 
 (defn del-db
   "Generates a database with the name given with `conf` key `:name`."

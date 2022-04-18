@@ -43,11 +43,12 @@
     (is (true? (:ok (db/put-doc {:_id docid :A  1} conf))))
     (is (= 1 (:A (db/get-doc docid conf))))
     (is (true? (:ok (db/put-doc {:_id docid :A  2} conf))))
-    (is (= 2 (:A (db/get-doc docid conf))))
-    (is (true? (:ok (db/put-doc {:_id docid :A  3} conf))))
-    (is (= 3 (:A (db/get-doc docid conf))))
-    (is (true? (:ok (db/put-doc {:_id docid :A  4} conf))))
-    (is (= 4 (:A (db/get-doc docid conf))))))
+    (is (= 2 (:A (db/get-doc docid conf))))))
+
+(deftest get-db-i
+  (testing "gets info about the test database"
+    (is (pos? (:doc_count (db/get-db conf))))))
+
 
 
 (deftest put-design-doc-i
@@ -61,7 +62,6 @@
 (deftest get-view-i
   (testing "a view can be retrieved"
     (is (pos? (count (db/get-view (assoc conf :design "test" :view "testview")))))))
-
 
 (deftest del-doc-i
   (testing "a document can be deleted only once"
@@ -83,6 +83,7 @@
   (uuids-ii)
   (gen-database-i)
   (put-doc-i)
+  (get-db-i)
   (put-design-doc-i)
   (get-view-i)
   (del-doc-i)
