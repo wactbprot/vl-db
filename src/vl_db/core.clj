@@ -1,6 +1,6 @@
 (ns vl-db.core
   ^{:author "Thomas Bock <thomas.bock@ptb.de>"
-    :doc "Collection of functions for CouchDB CRUD operations. 
+    :doc "Collection of functions for CouchDB CRUD operations.
           `conf` map last."}
   (:require [clojure.java.io :as io]
             [cheshire.core :as che]
@@ -47,7 +47,7 @@
           (string? v)]}
   (str (db-url conf) "/_design/" d "/_view/" v))
 
-(defn attachment-url 
+(defn attachment-url
   "Generates a attachment url from the `id, the `f`ilename and the `url`
   param given in the conf map."
   [id f conf]
@@ -58,15 +58,15 @@
 ;;........................................................................
 ;; helper functions
 ;;........................................................................
-(defn res->byte-array 
-  "Turns the `res`ponse body into a byte-array." 
+(defn res->byte-array
+  "Turns the `res`ponse body into a byte-array."
   [{body :body}]
   (with-open [xi (io/input-stream body)
               xo (ByteArrayOutputStream.)]
     (io/copy xi xo)
     (.toByteArray xo)))
 
-(defn filename->byte-array 
+(defn filename->byte-array
   "Reads a file with the name `filename` into a byte-array"
   [filename]
   (try
@@ -177,10 +177,10 @@
 ;;........................................................................
 ;; view
 ;;........................................................................
-(defn get-view 
+(defn get-view
   "Gets the database index described with `:design` and `:view`. The
   result set can be reduced by `:key`, `:startkey` and `:endkey`
-  included in the `conf` map." 
+  included in the `conf` map."
   [conf]
   (-> (view-url conf)
       (http/get! (:opt (param-opt conf)))
@@ -233,10 +233,24 @@
       (http/get! opt)
       :body))
 
-(defn put-attachment-from-filename
-  [id filename {opt :opt :as conf}]
+(defn get-attachment-as-byte-array
+  "Gets a attachment with `filename` from the document with the
+  identifier `id` and  turns the body into a byte-array."
+  [id filename conf]
+  (get-attachment id filename (assoc-in conf [:opt :as] :byte-array)))
+
+(defn put-attachment
+  "Puts the `body` as an attachment with the name `filename` to the
+  document with the id `id`. The `body`should be a `byte-array`"
+  [id filename body {opt :opt :as conf}]
   (-> (attachment-url id filename conf)
       (http/put! (assoc opt
                         :headers {:if-match (get-rev id conf)}
-                        :body (filename->byte-array filename)))
+                        :body body))
       res->map))
+
+(defn put-attachment-by-filename
+  "Reads the file with the name `filename` and turns it into a
+  byte-array. Calls [[put-attachment]] with the result as body."
+  [id filename {opt :opt :as conf}]
+  (put-attachment id filename  (filename->byte-array filename) conf))

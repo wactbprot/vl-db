@@ -65,8 +65,8 @@
 
 (deftest put-attachment-i
   (testing "a attachment can be uploaded"
-    (is (true? (:ok (db/put-attachment-from-filename docid "README.md" conf))))
-    (is (true? (:ok (db/put-attachment-from-filename docid "logo.png" conf))))))
+    (is (true? (:ok (db/put-attachment-by-filename docid "README.md" conf))))
+    (is (true? (:ok (db/put-attachment-by-filename docid "logo.png" conf))))))
 
 (deftest get-attachment-i
   (testing "a attachment can be uploaded"
