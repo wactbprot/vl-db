@@ -1,4 +1,4 @@
-(ns vl-db.configure)
+(ns libcdb.configure)
 
 
 (defn auth-opt [{usr :usr pwd :pwd :as conf}]

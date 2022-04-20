@@ -1,8 +1,8 @@
-(ns vl-db.api-test
+(ns libcdb.api-test
   ^{:author "Thomas Bock <thomas.bock@ptb.de>"
     :doc "Tests the complete API set."}
-  (:require [vl-db.configure :as c]
-            [vl-db.core :as db]
+  (:require [libcdb.configure :as c]
+            [libcdb.core :as db]
             [clojure.test :refer :all]))
 ;; ............................................................
 ;; to keep all test in the correct order

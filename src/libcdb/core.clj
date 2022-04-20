@@ -1,12 +1,12 @@
-(ns vl-db.core
+(ns libcdb.core
   ^{:author "Thomas Bock <thomas.bock@ptb.de>"
     :doc "Collection of functions for CouchDB CRUD operations.
           `conf` map last."}
   (:require [clojure.java.io :as io]
             [cheshire.core :as che]
             [clojure.string :as string]
-            [vl-db.configure :as c]
-            [vl-db.interface :as http])
+            [libcdb.configure :as c]
+            [libcdb.interface :as http])
   (:import java.io.ByteArrayOutputStream
            java.nio.file.Paths
            java.nio.file.Files))
@@ -59,7 +59,12 @@
 ;; helper functions
 ;;........................................................................
 (defn res->byte-array
-  "Turns the `res`ponse body into a byte-array."
+  "Turns the `res`ponse body into a byte-array.
+
+  NOTE: The clj-http library provides a `{:as :byte-array}` option
+  which is active at the [[get-attachment-as-byte-array]]
+  function. `res->byte-array` is therefore not needed for attachment
+  retrieval."
   [{body :body}]
   (with-open [xi (io/input-stream body)
               xo (ByteArrayOutputStream.)]
@@ -87,7 +92,9 @@
     res))
 
 (defn res->etag
-  "Extracts the etag from the `res`ponse."
+  "Extracts the `etag` from the `res`ponse.
+
+  NOTE: The Couchdb-Etag is the revision `:_rev` of a document."
   [{s :status :as res}]
   (when (and s (< s 400))
     (string/replace (-> res :headers :etag) #"\"" "")))
@@ -96,12 +103,17 @@
 ;;........................................................................
 ;; prep ops
 ;;........................................................................
-(defn get-rev [id {opt :opt :as conf}]
+(defn get-rev
+  "Returns the revision of a document with the id `id` by executionof a
+  `HEAD` request."
+  [id {opt :opt :as conf}]
   (-> (doc-url id conf)
       (http/head! opt)
        res->etag))
 
-(defn update-rev [{id :_id :as doc} conf]
+(defn update-rev
+  "Updates the revision of the given `doc`ument."
+  [{id :_id :as doc} conf]
   (if-let [r (get-rev id conf)]
     (assoc doc :_rev r)
     doc))

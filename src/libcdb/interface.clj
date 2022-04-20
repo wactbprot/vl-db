@@ -1,4 +1,4 @@
-(ns vl-db.interface
+(ns libcdb.interface
   ^{:author "Thomas Bock <thomas.bock@ptb.de>"
     :doc "Provides a interface to the http client libbrary."}
   (:require [clj-http.client :as http]))

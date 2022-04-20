@@ -1,5 +1,5 @@
-(ns vl-db.core-test
-  (:require [vl-db.core :as db]
+(ns libcdb.core-test
+  (:require [libcdb.core :as db]
             [clojure.test :refer :all]))
 
 (deftest param-opt-i

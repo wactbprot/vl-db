@@ -1,6 +1,6 @@
-# vl-db
+# libcdb
 
-Collection of functions for CouchDB interaction. 
+Library (lib) provides a collection of functions for CouchDB (cdb) interaction. 
 
 ## Dependencies
 
@@ -48,7 +48,7 @@ clojure -X:codox
 upload:
 
 ```shell
-scp -r docs/ bock04@a75438://var/www/html/vl-db/
+scp -r docs/ bock04@a75438://var/www/html/libcdb/
 ```
 
 ### Build uberjar (tools.deps and tools.build)
