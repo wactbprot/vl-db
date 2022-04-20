@@ -9,7 +9,7 @@ Library (lib) provides a collection of functions for CouchDB (cdb) interaction.
 
 ## Dokumentation
 
-* [API](https://a75438.berlin.ptb.de/vl-db/docs/index.html)
+* [API](https://a75438.berlin.ptb.de/libcdb/docs/index.html)
 
 
 ## Init conf
