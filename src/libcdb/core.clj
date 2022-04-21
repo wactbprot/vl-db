@@ -124,7 +124,7 @@
 ;;........................................................................
 (defn assoc-param [k conf]
   (if-let [v (get conf k)]
-    (dissoc (assoc-in conf [:opt :query-params] {k v}) k)
+    (dissoc (assoc-in conf [:opt :query-params k] v) k)
     conf))
 
 (defn param-opt [conf]

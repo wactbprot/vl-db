@@ -1,7 +1,21 @@
 (ns libcdb.configure)
 
 
-(defn auth-opt [{usr :usr pwd :pwd :as conf}]
+
+(defn gen-opt
+  "Defines a set of connection option defaults. Merges it into
+  `conf`."
+  [{opt :opt :as conf}]
+  (let [defaults {; :debug true
+                  :query-params {}
+                  :pool {:threads 1 :default-per-route 1}}]
+    (assoc conf :opt (merge defaults opt))))
+
+(defn auth-opt
+  "Assoc credentials as `basic-auth` to the connection options `:opt`
+  into the `conf` map. Dissoc `:usr` and `:pwd` afterwards for
+  security reasons."
+  [{usr :usr pwd :pwd :as conf}]
   (if (and usr pwd)
     (dissoc (assoc-in conf [:opt :basic-auth] [usr pwd]) :usr :pwd)
     conf))
@@ -16,21 +30,19 @@
   Example:
   ```clojure
   (def conf (config {:usr \"username\"
-                     :pwd \"password\"}))
+                     :pwd \"password\"
+                     :name \"db-name\"}))
   
   ;; or
   (def conf (config {:usr (System/getenv USERNAME) 
-                     :pwd (System/getenv PASSWD)}))
+                     :pwd (System/getenv PASSWD)
+                     :name \"db-name\"}))
   ```"
 
-  [conf]
+  [{opt :opt :as conf}]
   (-> {:prot "http"
        :host "localhost"
-       :port 5984
-       :name "vl_db"
-       :design "share"
-       :view "vl"
-       :opt {; :debug true
-             :pool {:threads 1 :default-per-route 1}}}
+       :port 5984}
       (merge conf)
+      gen-opt
       auth-opt))

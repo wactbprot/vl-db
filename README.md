@@ -15,10 +15,10 @@ Library (lib) provides a collection of functions for CouchDB (cdb) interaction.
 ## Init conf
 
 ```clojure
-(def conf (config {:usr "username" :pwd "password"}))
+(def conf (config {:usr "username" :pwd "password" :name "databasename"}))
 
 ;; or
-(def conf (config {:usr (System/getenv "USERNAME") :pwd (System/getenv "PASSWD")}))
+(def conf (config {:usr (System/getenv "USERNAME") :pwd (System/getenv "PASSWD") :name "databasename"}))
 
 ```
 
