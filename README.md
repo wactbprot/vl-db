@@ -57,3 +57,9 @@ scp -r docs/ bock04@a75438://var/www/html/libcdb/
 clj -T:build clean
 clj -T:build jar
 ```
+
+or both together 
+
+```shell
+clj -T:build all
+```
