@@ -11,6 +11,7 @@
            java.nio.file.Paths
            java.nio.file.Files))
 
+(defn config [conf] (c/config conf))
 
 ;;........................................................................
 ;; generate urls
