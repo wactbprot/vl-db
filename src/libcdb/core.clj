@@ -130,6 +130,7 @@
 
 (defn param-opt [conf]
   (->> conf
+       (assoc-param :descending)
        (assoc-param :key)
        (assoc-param :startkey)
        (assoc-param :endkey)))
