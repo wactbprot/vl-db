@@ -104,7 +104,7 @@
 ;; prep ops
 ;;........................................................................
 (defn get-rev
-  "Returns the revision of a document with the id `id` by executionof a
+  "Returns the revision of a document with the id `id` by execution of a
   `HEAD` request."
   [id {opt :opt :as conf}]
   (-> (doc-url id conf)
@@ -127,7 +127,16 @@
     (dissoc (assoc-in conf [:opt :query-params k] (che/encode v)) k)
     conf))
 
-(defn param-opt [conf]
+(defn param-opt
+  "There is a shortcut for the often used query params `:key`,
+  `:startkey` and `:endkey`. This params may be placed in the top
+  level of the `conf` map. Other query params with key `k` and value
+  `v` have to be placed like this:
+
+  ```clojure
+  (assoc-in conf [:opt :query-params k] (che/encode v))
+  ```"
+  [conf]
   (->> conf
        (assoc-param :key)
        (assoc-param :startkey)
