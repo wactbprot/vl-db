@@ -5,7 +5,7 @@
 (deftest param-opt-i
   (testing "right place"
     (is (= (db/param-opt {:key "foo"})
-           {:opt {:query-params {:key "foo"}}})
+           {:opt {:query-params {:key "\"foo\""}}})
         "values")))
 
 

@@ -36,7 +36,7 @@ $ clojure -X:test
 Run in shell with:
 
 ```shell
-$ clojure -X:coverage
+$ clojure -M:coverage
 ```
 
 ## Generate api docs
