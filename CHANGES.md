@@ -1,5 +1,7 @@
 # Release notes
 
+## 0.5.34
+- add doc-exist? predicate function
 
 ## 0.4.33
 - add post interface

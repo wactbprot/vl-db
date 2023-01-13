@@ -121,6 +121,14 @@
     (assoc doc :_rev r)
     doc))
 
+(defn doc-exist?
+  "Predicate function checks if the document with the id `id` exists." 
+  [id {opt :opt :as conf}]
+  (-> (doc-url id conf)
+      (http/head! opt)
+      :error
+      nil?))
+
 
 ;;........................................................................
 ;; query params
