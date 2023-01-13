@@ -1,6 +1,10 @@
 # Release notes
 
 
+## 0.4.30
+- add post interface
+- add replication function
+
 ## 0.3.29
 - add `descending` query param
 

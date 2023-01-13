@@ -4,9 +4,13 @@
 
 (defn gen-opt
   "Defines a set of connection option defaults. Merges it into
-  `conf`."
+  `conf` as opt. `opt` is used as request map."
   [{opt :opt :as conf}]
   (let [defaults {; :debug true
+                  :content-type :json
+                  :socket-timeout 600000 
+                  :connection-timeout 600000
+                  :accept :json
                   :query-params {}
                   :pool {:threads 1 :default-per-route 1}}]
     (assoc conf :opt (merge defaults opt))))
@@ -38,7 +42,6 @@
                      :pwd (System/getenv PASSWD)
                      :name \"db-name\"}))
   ```"
-
   [{opt :opt :as conf}]
   (-> {:prot "http"
        :host "localhost"

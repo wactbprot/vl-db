@@ -34,6 +34,8 @@
 
 (defn up-url [conf] (str (base-url conf) "/_up"))
 
+(defn replicate-url [conf] (str (base-url conf) "/_replicate"))
+
 (defn doc-url
   "Generates the document url for the given `id`. Appends the document
   `rev` if provided."
@@ -201,6 +203,22 @@
       res->map
       :rows))
 
+;;........................................................................
+;; replication
+;;........................................................................
+(defn replicate-db
+  "Posts the given replication `doc`ument to the replication
+  endpoint. (see
+  https://docs.couchdb.org/en/latest/replication/replicator.html)
+  The replication document may look like this:
+
+  ```clojure
+  (replicate-db {:source \"db_a\" :target \"db_b\"} conf)
+  ```"
+  [{s :source t :target :as doc} {opt :opt :as conf}]
+  (-> (replicate-url conf)
+      (http/post! (assoc opt :body (che/encode doc)))
+      res->map))
 
 ;;........................................................................
 ;; uuid

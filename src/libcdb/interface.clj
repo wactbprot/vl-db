@@ -12,5 +12,6 @@
 
 (defn get! [url opt] (req! #(http/get url %) opt))
 (defn put! [url opt] (req! #(http/put url %) opt))
+(defn post! [url opt] (req! #(http/post url %) opt))
 (defn del! [url opt] (req! #(http/delete url %) opt))
 (defn head! [url opt] (req! #(http/head url %) opt))
